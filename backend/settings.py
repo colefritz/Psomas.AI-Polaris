@@ -12,9 +12,9 @@ from pydantic import (
     model_validator,
     PrivateAttr,
     ValidationError,
-    ValidationInfo,
-    ErrorWrapper
+    ValidationInfo
 )
+from pydantic.error_wrappers import ErrorWrapper
 from pydantic.alias_generators import to_snake
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from typing import Annotated, List, Literal, Optional
@@ -22,6 +22,7 @@ from typing_extensions import Self
 from quart import Request
 from backend.utils import parse_multi_columns, generateFilterString
 
+# Rest of the file remains unchanged
 DOTENV_PATH = os.environ.get(
     "DOTENV_PATH",
     os.path.join(
