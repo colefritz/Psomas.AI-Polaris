@@ -2,6 +2,7 @@ import os
 import json
 import logging
 from abc import ABC, abstractmethod
+from wsgiref.validate import ErrorWrapper
 from pydantic import (
     BaseModel,
     confloat,
@@ -14,7 +15,6 @@ from pydantic import (
     ValidationError,
     ValidationInfo
 )
-from pydantic.errors import PydanticErrorWrapper as ErrorWrapper
 from pydantic.alias_generators import to_snake
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from typing import Annotated, List, Literal, Optional
