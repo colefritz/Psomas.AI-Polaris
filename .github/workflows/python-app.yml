@@ -33,21 +33,30 @@ jobs:
         run: |
           # Write secret to .env file
           echo "${{ secrets.ENV_FILE }}" > .env
+          
+          # Display .env content for debugging (do not do this in production for sensitive data)
+          echo "Contents of the .env file (sanitized for debugging):"
+          grep -v 'SECRET\|PASSWORD\|TOKEN' .env || true
+          
           # Validate the file format
           if ! grep -qE '^[A-Za-z_][A-Za-z0-9_]*=' .env; then
             echo "Invalid .env format" >&2
             exit 1
           fi
-          # Source the environment variables
+
+          # Debugging to verify the file before sourcing
+          echo "Sourcing the .env file..."
+          set -x
           set -a
           source .env || true
           set +a
+          set +x
 
       # Step 5: Debug environment variables (Optional)
       - name: Debug environment variables
         run: |
-          echo "Loaded environment variables:"
-          cat .env
+          echo "Loaded environment variables (sanitized for debugging):"
+          env | grep -v 'SECRET\|PASSWORD\|TOKEN' || true
 
       # Step 6: Run tests with pytest
       - name: Test with pytest
