@@ -1,5 +1,3 @@
-'use client'
-
 import { Document, Page, pdfjs } from 'react-pdf'
 import styles from './PDFViewer.module.css'
 
