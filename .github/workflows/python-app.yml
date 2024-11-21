@@ -32,7 +32,7 @@ jobs:
       - name: Export environment variables
         run: |
           set -a
-          source .env
+          . .env || true
           set +a
 
       - name: Test with pytest
