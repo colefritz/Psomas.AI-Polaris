@@ -165,9 +165,7 @@ class _AzureOpenAISettings(BaseSettings):
             return Self
         
         raise ValidationError(
-            errors=[
-                "AZURE_OPENAI_ENDPOINT or AZURE_OPENAI_RESOURCE is required"
-            ],
+           f"AZURE_OPENAI_ENDPOINT or AZURE_OPENAI_RESOURCE is required for {self.resource}",
             model=self.__class__
         )
         
@@ -592,12 +590,12 @@ class _MongoDbSettings(BaseSettings, DatasourcePayloadConstructor):
     @model_validator(mode="after")
     def construct_authentication(self) -> Self:
         if not self.endpoint or not self.username or not self.password:
+          
             raise ValidationError(
-                errors=[
-                    "MongoDB credentials are incomplete"
-                ],
-                model=self.__class__
+            f"MongoDB credentials are incomplete",
+            model=self.__class__
             )
+
         self.authentication = {
             "type": "username_and_password",
             "username": self.username,
