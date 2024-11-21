@@ -2,7 +2,6 @@ import os
 import json
 import logging
 from abc import ABC, abstractmethod
-from wsgiref.validate import ErrorWrapper
 from pydantic import (
     BaseModel,
     confloat,
