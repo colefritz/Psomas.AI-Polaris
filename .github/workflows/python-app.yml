@@ -31,16 +31,16 @@ jobs:
       # Step 4: Sanitize and Load Environment Variables
       - name: Load environment variables from .env
         run: |
-          # Write secret to .env file and sanitize it
+          # Write secret to .env file
           echo "${{ secrets.ENV_FILE }}" > .env
-          # Escape special characters and validate the file
-          sed -i 's/"/\\"/g' .env
+          # Validate the file format
           if ! grep -qE '^[A-Za-z_][A-Za-z0-9_]*=' .env; then
             echo "Invalid .env format" >&2
             exit 1
           fi
+          # Source the environment variables
           set -a
-          . .env || true
+          source .env || true
           set +a
 
       # Step 5: Debug environment variables (Optional)
