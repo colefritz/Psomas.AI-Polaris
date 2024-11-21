@@ -11,6 +11,7 @@ import supersub from 'remark-supersub'
 import { AskResponse, Citation, Feedback, historyMessageFeedback } from '../../api'
 import { XSSAllowTags, XSSAllowAttributes } from '../../constants/sanatizeAllowables'
 import { AppStateContext } from '../../state/AppProvider'
+import { PDFViewer } from '../PDFViewer'
 
 import { parseAnswer } from './AnswerParser'
 
@@ -32,6 +33,7 @@ export const Answer = ({ answer, onCitationClicked, onExectResultClicked }: Prop
   }
 
   const [isRefAccordionOpen, { toggle: toggleIsRefAccordionOpen }] = useBoolean(false)
+  const [activeCitation, setActiveCitation] = useState<Citation | null>(null)
   const filePathTruncationLimit = 50
 
   const parsedAnswer = useMemo(() => parseAnswer(answer), [answer])
@@ -48,6 +50,11 @@ export const Answer = ({ answer, onCitationClicked, onExectResultClicked }: Prop
   const handleChevronClick = () => {
     setChevronIsExpanded(!chevronIsExpanded)
     toggleIsRefAccordionOpen()
+  }
+
+  const handleCitationClick = (citation: Citation) => {
+    setActiveCitation(citation)
+    onCitationClicked(citation)
   }
 
   useEffect(() => {
@@ -359,8 +366,8 @@ export const Answer = ({ answer, onCitationClicked, onExectResultClicked }: Prop
                   tabIndex={0}
                   role="link"
                   key={idx}
-                  onClick={() => onCitationClicked(citation)}
-                  onKeyDown={e => (e.key === 'Enter' || e.key === ' ' ? onCitationClicked(citation) : null)}
+                  onClick={() => handleCitationClick(citation)}
+                  onKeyDown={e => (e.key === 'Enter' || e.key === ' ' ? handleCitationClick(citation) : null)}
                   className={styles.citationContainer}
                   aria-label={createCitationFilepath(citation, idx)}>
                   <div className={styles.citation}>{idx}</div>
@@ -371,6 +378,12 @@ export const Answer = ({ answer, onCitationClicked, onExectResultClicked }: Prop
           </div>
         )}
       </Stack>
+      {activeCitation && (
+        <PDFViewer 
+          citation={activeCitation}
+          onClose={() => setActiveCitation(null)}
+        />
+      )}
       <Dialog
         onDismiss={() => {
           resetFeedbackDialog()

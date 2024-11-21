@@ -18,6 +18,13 @@ export type Citation = {
   metadata: string | null
   chunk_id: string | null
   reindex_id: string | null
+  page_number?: number
+  highlight_coords?: {
+    x: number
+    y: number
+    width: number
+    height: number
+  }
 }
 
 export type ToolMessageContent = {

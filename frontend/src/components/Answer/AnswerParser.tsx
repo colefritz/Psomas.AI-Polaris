@@ -9,17 +9,17 @@ export type ParsedAnswer = {
 } | null
 
 export const enumerateCitations = (citations: Citation[]) => {
-  const filepathMap = new Map()
-  for (const citation of citations) {
-    const { filepath } = citation
-    let part_i = 1
-    if (filepathMap.has(filepath)) {
-      part_i = filepathMap.get(filepath) + 1
+  const filepathMap = new Map<string, number>()
+  return citations.map(citation => {
+    const filepath = citation.filepath || ''  // Use empty string as fallback for null filepath
+    const currentCount = filepathMap.get(filepath) || 0
+    const nextCount = currentCount + 1
+    filepathMap.set(filepath, nextCount)
+    return {
+      ...citation,
+      part_index: nextCount
     }
-    filepathMap.set(filepath, part_i)
-    citation.part_index = part_i
-  }
-  return citations
+  })
 }
 
 export function parseAnswer(answer: AskResponse): ParsedAnswer {
