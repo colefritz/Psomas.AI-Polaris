@@ -164,7 +164,16 @@ class _AzureOpenAISettings(BaseSettings):
             self.endpoint = f"https://{self.resource}.openai.azure.com"
             return Self
         
-        raise ValidationError(line_errors="AZURE_OPENAI_ENDPOINT or AZURE_OPENAI_RESOURCE is required")
+        raise ValidationError.from_exception_data(
+        title="Azure OpenAI Configuration Error",
+        line_errors=[
+            {
+                "loc": ("azure_openai", "endpoint"),
+                "msg": "Either AZURE_OPENAI_ENDPOINT or AZURE_OPENAI_RESOURCE must be provided.",
+                "type": "value_error.missing",
+            }
+        ]
+    )
         
     def extract_embedding_dependency(self) -> Optional[dict]:
         if self.embedding_name:
@@ -588,7 +597,16 @@ class _MongoDbSettings(BaseSettings, DatasourcePayloadConstructor):
     def construct_authentication(self) -> Self:
         if not self.endpoint or not self.username or not self.password:
           
-            raise ValidationError(line_errors="MongoDB credentials are incomplete")
+             raise ValidationError.from_exception_data(
+            title="MongoDB Authentication Error",
+            line_errors=[
+                {
+                    "loc": ("mongodb", "authentication"),
+                    "msg": "MongoDB credentials are incomplete (missing endpoint, username, or password).",
+                    "type": "value_error.missing",
+                }
+            ]
+        )
 
         self.authentication = {
             "type": "username_and_password",
