@@ -1,11 +1,8 @@
 import { useEffect, useState } from 'react'
-import { Document, Page, pdfjs } from 'react-pdf'
 import { Citation } from '../../api'
 import { Stack } from '@fluentui/react'
 import styles from './PDFViewer.module.css'
-
-// Set up the worker for react-pdf
-pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.js`
+import { PDFRenderer } from './PDFRenderer'
 
 interface Props {
   citation: Citation
@@ -26,24 +23,6 @@ export const PDFViewer = ({ citation, onClose }: Props) => {
 
   const onDocumentLoadSuccess = ({ numPages }: { numPages: number }) => {
     setNumPages(numPages)
-  }
-
-  const renderHighlight = () => {
-    if (!citation.highlight_coords) return null
-
-    const { x, y, width, height } = citation.highlight_coords
-    return (
-      <div
-        className={styles.highlight}
-        style={{
-          position: 'absolute',
-          left: `${x * scale}px`,
-          top: `${y * scale}px`,
-          width: `${width * scale}px`,
-          height: `${height * scale}px`
-        }}
-      />
-    )
   }
 
   return (
@@ -82,20 +61,13 @@ export const PDFViewer = ({ citation, onClose }: Props) => {
       </Stack>
 
       <div className={styles.documentContainer}>
-        <Document
-          file={citation.filepath || ''}
+        <PDFRenderer
+          filepath={citation.filepath || ''}
+          pageNumber={pageNumber}
+          scale={scale}
           onLoadSuccess={onDocumentLoadSuccess}
-          className={styles.document}
-        >
-          <Page
-            pageNumber={pageNumber}
-            scale={scale}
-            className={styles.page}
-            renderTextLayer={false}
-            renderAnnotationLayer={false}
-          />
-          {renderHighlight()}
-        </Document>
+          highlightCoords={citation.highlight_coords}
+        />
       </div>
     </Stack>
   )
