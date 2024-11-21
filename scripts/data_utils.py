@@ -14,7 +14,7 @@ from concurrent.futures import ProcessPoolExecutor
 from dataclasses import dataclass
 from functools import partial
 from typing import Any, Callable, Dict, Generator, List, Optional, Tuple, Union
-from azure.ai.documentintelligence.models import AnalyzeDocumentRequest
+from azure.core.rest import HttpRequest
 import fitz
 import requests
 import base64
@@ -22,7 +22,7 @@ import base64
 import markdown
 import requests
 import tiktoken
-from azure.ai.documentintelligence import DocumentIntelligenceClient
+from azure.ai.formrecognizer import DocumentAnalysisClient
 from azure.core.credentials import AzureKeyCredential
 from azure.identity import DefaultAzureCredential
 from azure.storage.blob import ContainerClient
