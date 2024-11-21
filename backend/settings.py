@@ -14,7 +14,7 @@ from pydantic import (
     ValidationError,
     ValidationInfo
 )
-from pydantic.error_wrappers import ErrorWrapper
+from pydantic.errors import PydanticErrorWrapper as ErrorWrapper
 from pydantic.alias_generators import to_snake
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from typing import Annotated, List, Literal, Optional
