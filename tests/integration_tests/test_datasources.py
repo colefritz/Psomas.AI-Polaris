@@ -5,12 +5,15 @@ from importlib import import_module, reload
 from jinja2 import FileSystemLoader
 from jinja2 import Environment
 from quart import Quart
+import asyncio
+from unittest.mock import patch
 
 
+# Define available datasource types
 datasources = [
     "AzureCognitiveSearch",
     "Elasticsearch",
-    "none"  # TODO: add tests for additional data sources
+    "none"  # For testing without datasource
 ]
 
 
@@ -40,6 +43,14 @@ def render_template_to_tempfile(
     return rendered_output
 
 
+@pytest.fixture(scope="function")
+def event_loop():
+    """Create an instance of the default event loop for each test case."""
+    loop = asyncio.get_event_loop_policy().new_event_loop()
+    yield loop
+    loop.close()
+
+
 @pytest.fixture(scope="function", params=datasources, ids=datasources)
 def datasource(request):
     return request.param
@@ -64,6 +75,7 @@ def use_aoai_embeddings(request):
 def use_elasticsearch_embeddings(request):
     return request.param
 
+
 @pytest.fixture(scope="function", params=[True, False], ids=["use_mi", "use_keys"])
 def use_mi(request):
     return request.param
@@ -80,6 +92,7 @@ def dotenv_rendered_template_path(
     use_elasticsearch_embeddings, 
     use_mi
 ):
+    """Create a temporary .env file from template with test parameters"""
     rendered_template_name = request.node.name.replace("[", "_").replace("]", "_")
     template_path = os.path.join(
         os.path.dirname(__file__),
@@ -118,6 +131,7 @@ def dotenv_rendered_template_path(
 
 @pytest.fixture(scope="function")
 def test_app(dotenv_rendered_template_path) -> Quart:
+    """Create a test instance of the Quart application"""
     os.environ["DOTENV_PATH"] = dotenv_rendered_template_path
     app_module = import_module("app")
     app_module = reload(app_module)
@@ -127,16 +141,19 @@ def test_app(dotenv_rendered_template_path) -> Quart:
 
 
 @pytest.mark.asyncio
-async def test_dotenv(test_app: Quart, dotenv_template_params: dict[str, str]):
+async def test_dotenv(
+    test_app: Quart, 
+    dotenv_template_params: dict[str, str], 
+    mock_openai_response
+):
+    """Test the chat endpoint with different configurations"""
     if dotenv_template_params["DATASOURCE_TYPE"] == "AzureCognitiveSearch":
         message_content = dotenv_template_params["AZURE_SEARCH_QUERY"]
-        
     elif dotenv_template_params["DATASOURCE_TYPE"] == "Elasticsearch":
         message_content = dotenv_template_params["ELASTICSEARCH_QUERY"]
-        
     else:
         message_content = "What is Contoso?"
-        
+
     request_path = "/conversation"
     request_data = {
         "messages": [
@@ -146,9 +163,15 @@ async def test_dotenv(test_app: Quart, dotenv_template_params: dict[str, str]):
             }
         ]
     }
-    
-    test_client = test_app.test_client()
-    response = await test_client.post(request_path, json=request_data)
-    assert response.status_code == 200
-    response_content = await response.get_data()
-    print(response_content)
+
+    async with test_app.test_client() as test_client:
+        response = await test_client.post(request_path, json=request_data)
+        assert response.status_code == 200
+        response_data = await response.get_json()
+        assert "content" in response_data
+        
+        # Verify the mock was called with correct parameters
+        mock_openai_response.assert_called()
+        call_args = mock_openai_response.call_args[1]
+        assert "messages" in call_args
+        assert call_args["messages"][0]["content"] == message_content

@@ -21,7 +21,6 @@ from typing_extensions import Self
 from quart import Request
 from backend.utils import parse_multi_columns, generateFilterString
 
-# Rest of the file remains unchanged
 DOTENV_PATH = os.environ.get(
     "DOTENV_PATH",
     os.path.join(
@@ -32,6 +31,7 @@ DOTENV_PATH = os.environ.get(
     )
 )
 MINIMUM_SUPPORTED_AZURE_OPENAI_PREVIEW_API_VERSION = "2024-05-01-preview"
+
 class _UiSettings(BaseSettings):
     model_config = SettingsConfigDict(
         env_prefix="UI_",
@@ -63,6 +63,8 @@ class _ChatHistorySettings(BaseSettings):
     account_key: Optional[str] = None
     conversations_container: str
     enable_feedback: bool = False
+
+
 class _PromptflowSettings(BaseSettings):
     model_config = SettingsConfigDict(
         env_prefix="PROMPTFLOW_",
@@ -98,10 +100,14 @@ class _AzureOpenAISettings(BaseSettings):
         env_ignore_empty=True
     )
     
+    # Required fields
     model: str
+    deployment: Optional[str] = Field(default=None)  # Made optional with default=None
     key: Optional[str] = None
-    resource: Optional[str] = None
     endpoint: Optional[str] = None
+    resource: Optional[str] = None
+    
+    # Optional fields with defaults
     temperature: float = 0
     top_p: float = 0
     max_tokens: int = 1000
@@ -129,11 +135,9 @@ class _AzureOpenAISettings(BaseSettings):
                 tools_dict = json.loads(tools_json_str)
                 return _AzureOpenAITool(**tools_dict)
             except json.JSONDecodeError:
-                logging.warning("No valid tool definition found in the environment.  If you believe this to be in error, please check that the value of AZURE_OPENAI_TOOLS is a valid JSON string.")
-            
+                logging.warning("No valid tool definition found in the environment. If you believe this to be in error, please check that the value of AZURE_OPENAI_TOOLS is a valid JSON string.")
             except ValidationError as e:
                 logging.warning(f"An error occurred while deserializing the tool definition - {str(e)}")
-            
         return None
     
     @field_validator('logit_bias', mode='before')
@@ -144,7 +148,6 @@ class _AzureOpenAISettings(BaseSettings):
                 return json.loads(logit_bias_json_str)
             except json.JSONDecodeError as e:
                 logging.warning(f"An error occurred while deserializing the logit bias string -- {str(e)}")
-                
         return None
         
     @field_validator('stop_sequence', mode='before')
@@ -152,28 +155,33 @@ class _AzureOpenAISettings(BaseSettings):
     def split_contexts(cls, comma_separated_string: str) -> List[str]:
         if isinstance(comma_separated_string, str) and len(comma_separated_string) > 0:
             return parse_multi_columns(comma_separated_string)
-        
         return None
+    
+    @field_validator('model')
+    def validate_model(cls, v):
+        """Validate and normalize model name"""
+        if not v:
+            raise ValueError("Model name cannot be empty")
+        # Fix common model name typos
+        if v == 'gpt-4o':
+            return 'gpt-4'
+        return v
+    
+    @model_validator(mode='after')
+    def set_deployment_from_model_name(self) -> Self:
+        """If deployment is not set, use model name as deployment"""
+        if not self.deployment and self.model:
+            self.deployment = self.model
+        return self
     
     @model_validator(mode="after")
     def ensure_endpoint(self) -> Self:
-        if self.endpoint:
-            return Self
-        
-        elif self.resource:
+        """Ensure endpoint is set either directly or via resource name"""
+        if not self.endpoint and not self.resource:
+            raise ValueError("Either endpoint or resource must be provided")
+        if not self.endpoint and self.resource:
             self.endpoint = f"https://{self.resource}.openai.azure.com"
-            return Self
-        
-        raise ValidationError.from_exception_data(
-        title="Azure OpenAI Configuration Error",
-        line_errors=[
-            {
-                "loc": ("azure_openai", "endpoint"),
-                "msg": "Either AZURE_OPENAI_ENDPOINT or AZURE_OPENAI_RESOURCE must be provided.",
-                "type": "value_error.missing",
-            }
-        ]
-    )
+        return self
         
     def extract_embedding_dependency(self) -> Optional[dict]:
         if self.embedding_name:
@@ -201,6 +209,8 @@ class _AzureOpenAISettings(BaseSettings):
                 }
         else:   
             return None
+
+
 class _SearchCommonSettings(BaseSettings):
     model_config = SettingsConfigDict(
         env_prefix="SEARCH_",
@@ -208,6 +218,7 @@ class _SearchCommonSettings(BaseSettings):
         extra="ignore",
         env_ignore_empty=True
     )
+    
     max_search_queries: Optional[int] = None
     allow_partial_result: bool = False
     include_contexts: Optional[List[str]] = ["citations", "intent"]
@@ -222,7 +233,6 @@ class _SearchCommonSettings(BaseSettings):
     def split_contexts(cls, comma_separated_string: str, info: ValidationInfo) -> List[str]:
         if isinstance(comma_separated_string, str) and len(comma_separated_string) > 0:
             return parse_multi_columns(comma_separated_string)
-        
         return cls.model_fields[info.field_name].get_default()
 
 
@@ -240,6 +250,8 @@ class DatasourcePayloadConstructor(BaseModel, ABC):
         **kwargs
     ):
         pass
+
+
 class _AzureSearchSettings(BaseSettings, DatasourcePayloadConstructor):
     model_config = SettingsConfigDict(
         env_prefix="AZURE_SEARCH_",
@@ -247,6 +259,7 @@ class _AzureSearchSettings(BaseSettings, DatasourcePayloadConstructor):
         extra="ignore",
         env_ignore_empty=True
     )
+    
     _type: Literal["azure_search"] = PrivateAttr(default="azure_search")
     top_k: int = Field(default=5, serialization_alias="top_n_documents")
     strictness: int = 3
@@ -285,7 +298,6 @@ class _AzureSearchSettings(BaseSettings, DatasourcePayloadConstructor):
     def split_columns(cls, comma_separated_string: str) -> List[str]:
         if isinstance(comma_separated_string, str) and len(comma_separated_string) > 0:
             return parse_multi_columns(comma_separated_string)
-        
         return None
     
     @model_validator(mode="after")
@@ -299,7 +311,6 @@ class _AzureSearchSettings(BaseSettings, DatasourcePayloadConstructor):
             self.authentication = {"type": "api_key", "key": self.key}
         else:
             self.authentication = {"type": "system_assigned_managed_identity"}
-            
         return self
     
     @model_validator(mode="after")
@@ -316,7 +327,8 @@ class _AzureSearchSettings(BaseSettings, DatasourcePayloadConstructor):
     @model_validator(mode="after")
     def set_query_type(self) -> Self:
         self.query_type = to_snake(self.query_type)
-
+        return self
+    
     def _set_filter_string(self, request: Request) -> str:
         if self.permitted_groups_column:
             user_token = request.headers.get("X-MS-TOKEN-AAD-ACCESS-TOKEN", "")
@@ -325,11 +337,9 @@ class _AzureSearchSettings(BaseSettings, DatasourcePayloadConstructor):
                 raise ValueError(
                     "Document-level access control is enabled, but user access token could not be fetched."
                 )
-
             filter_string = generateFilterString(user_token)
             logging.debug(f"FILTER: {filter_string}")
             return filter_string
-        
         return None
             
     def construct_payload_configuration(
@@ -350,68 +360,6 @@ class _AzureSearchSettings(BaseSettings, DatasourcePayloadConstructor):
             "type": self._type,
             "parameters": parameters
         }
-class _AzureCosmosDbMongoVcoreSettings(BaseSettings, DatasourcePayloadConstructor):
-    model_config = SettingsConfigDict(
-        env_prefix="AZURE_COSMOSDB_MONGO_VCORE_",
-        env_file=DOTENV_PATH,
-        extra="ignore",
-        env_ignore_empty=True
-    )
-    _type: Literal["azure_cosmosdb"] = PrivateAttr(default="azure_cosmosdb")
-    top_k: int = Field(default=5, serialization_alias="top_n_documents")
-    strictness: int = 3
-    enable_in_domain: bool = Field(default=True, serialization_alias="in_scope")
-    query_type: Literal['vector'] = "vector"
-    connection_string: str = Field(exclude=True)
-    index: str = Field(serialization_alias="index_name")
-    database: str = Field(serialization_alias="database_name")
-    container: str = Field(serialization_alias="container_name")
-    content_columns: Optional[List[str]] = Field(default=None, exclude=True)
-    vector_columns: Optional[List[str]] = Field(default=None, exclude=True)
-    title_column: Optional[str] = Field(default=None, exclude=True)
-    url_column: Optional[str] = Field(default=None, exclude=True)
-    filename_column: Optional[str] = Field(default=None, exclude=True)
-    
-    # Constructed fields
-    authentication: Optional[dict] = None
-    embedding_dependency: Optional[dict] = None
-    fields_mapping: Optional[dict] = None
-    
-    @field_validator('content_columns', 'vector_columns', mode="before")
-    @classmethod
-    def split_columns(cls, comma_separated_string: str) -> List[str]:
-        if isinstance(comma_separated_string, str) and len(comma_separated_string) > 0:
-            return parse_multi_columns(comma_separated_string)
-        
-        return None
-    
-    @model_validator(mode="after")
-    def construct_authentication(self) -> Self:
-        self.authentication = {
-            "type": "connection_string",
-            "connection_string": self.connection_string
-        }
-        return self
-    
-    @model_validator(mode="after")
-    def set_fields_mapping(self) -> Self:
-        self.fields_mapping = {
-            "content_fields": self.content_columns,
-            "title_field": self.title_column,
-            "url_field": self.url_column,
-            "filepath_field": self.filename_column,
-            "vector_fields": self.vector_columns
-        }
-        return self
-    
-    def construct_payload_configuration(self, *args, **kwargs):
-        self.embedding_dependency = self._settings.azure_openai.extract_embedding_dependency()
-        parameters = self.model_dump(exclude_none=True, by_alias=True)
-        parameters.update(self._settings.search.model_dump(exclude_none=True, by_alias=True))
-        return {
-            "type": self._type,
-            "parameters": parameters
-        }
 
 
 class _ElasticsearchSettings(BaseSettings, DatasourcePayloadConstructor):
@@ -421,6 +369,7 @@ class _ElasticsearchSettings(BaseSettings, DatasourcePayloadConstructor):
         extra="ignore",
         env_ignore_empty=True
     )
+    
     _type: Literal["elasticsearch"] = PrivateAttr(default="elasticsearch")
     top_k: int = Field(default=5, serialization_alias="top_n_documents")
     strictness: int = 3
