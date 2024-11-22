@@ -42,10 +42,12 @@ def dotenv_template_params_from_env() -> dict[str, str]:
         "AZURE_COSMOSDB_ACCOUNT_KEY",
         "AZURE_COSMOSDB_CONVERSATIONS_CONTAINER",
         "AZURE_COSMOSDB_DATABASE",
-        "AZURE_OPENAI_EMBEDDING_NAME"
+        "AZURE_COSMOSDB_ENABLE_FEEDBACK",
+        "AZURE_OPENAI_EMBEDDING_NAME",
         "AZURE_OPENAI_ENDPOINT",
         "AZURE_OPENAI_MODEL",
         "AZURE_OPENAI_KEY",
+        "AZURE_OPENAI_RESOURCE",
         "AZURE_SEARCH_INDEX",
         "AZURE_SEARCH_KEY",
         "AZURE_SEARCH_QUERY",
@@ -66,4 +68,3 @@ def dotenv_template_params(request, use_keyvault_secrets):
         return request.getfixturevalue("dotenv_template_params_from_kv")
     
     return request.getfixturevalue("dotenv_template_params_from_env")
-
